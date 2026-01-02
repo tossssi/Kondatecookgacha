@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>クッキングガチャ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 見やすい丸ゴシック体をインポート */
+        @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap');
+        
+        body {
+            /* 全体にZen Maru Gothicを適用して統一 */
+            font-family: 'Zen+Maru+Gothic', sans-serif;
+            background-color: #fffaf0;
+            color: #444;
+            /* スマホ1画面に収めるための設定 */
+            height: 100vh;
+            height: -webkit-fill-available;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden; /* はみ出し防止 */
+        }
+
+        .cp-card {
+            background-color: #ffffff;
+            border: 1px solid #eee;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        .btn-primary {
+            background-color: #ff9e3d;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: translateY(2px);
+            filter: brightness(0.9);
+        }
+
+        .slot-flicker {
+            animation: flicker 0.1s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.7; transform: scale(0.98); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .category-label {
+            background-color: #f8f8f8;
+            color: #88b04b;
+            font-size: 0.75rem;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        /* カスタムスクロールバー */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #ff9e3d;
+            border-radius: 10px;
+        }
+
+        /* 結果エリアのサイズを固定（スマホ1画面重視） */
+        .fixed-result-height {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-4 items-center">
+
+    <!-- Header -->
+    <div class="mb-4 text-center w-full">
+        <h1 class="text-2xl font-black text-[#ff9e3d] flex items-center justify-center tracking-tight">
+            <span class="mr-2 text-3xl">🍳</span>クッキングガチャ
+        </h1>
+    </div>
+
+    <div class="w-full max-w-sm cp-card rounded-[2rem] p-5 sm:p-6">
+        <!-- Slot Area -->
+        <div class="space-y-3 mb-5">
+            <div class="flex flex-col items-center">
+                <span class="category-label mb-1">🍖 メイン</span>
+                <div id="main-display" class="text-xl font-black text-gray-800 border-b-2 border-orange-100 pb-1 w-full text-center h-8 flex items-center justify-center italic tracking-wider">
+                    ーーー
+                </div>
+            </div>
+            <div class="flex flex-col items-center">
+                <span class="category-label mb-1">🥗 野菜</span>
+                <div id="veg-display" class="text-xl font-black text-gray-800 border-b-2 border-orange-100 pb-1 w-full text-center h-8 flex items-center justify-center italic tracking-wider">
+                    ーーー
+                </div>
+            </div>
+            <div class="flex flex-col items-center">
+                <span class="category-label mb-1">🧂 味付け</span>
+                <div id="taste-display" class="text-xl font-black text-gray-800 border-b-2 border-orange-100 pb-1 w-full text-center h-8 flex items-center justify-center italic tracking-wider">
+                    ーーー
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Button -->
+        <button id="gacha-button" class="btn-primary w-full py-4 rounded-full text-white text-xl font-black shadow-lg mb-5 active:scale-95 transition-transform tracking-wider">
+            献立をきめる！
+        </button>
+
+        <!-- Result Area -->
+        <div id="final-result" class="p-3 bg-orange-50 rounded-2xl border-2 border-dotted border-orange-200 fixed-result-height text-center overflow-hidden">
+            <div id="result-placeholder" class="text-orange-400 text-sm font-bold">
+                ボタンを押すと<br>結果が出るよ！
+            </div>
+            <div id="result-content" class="hidden w-full">
+                <div class="text-xs text-orange-600 font-black mb-1 tracking-widest uppercase">✨ おすすめの献立 ✨</div>
+                <!-- 3行までに制限 -->
+                <p class="text-gray-900 font-black text-lg sm:text-xl leading-snug break-words tracking-wide whitespace-pre-line overflow-hidden" id="result-text" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"></p>
+            </div>
+        </div>
+
+        <!-- Management Button -->
+        <div class="mt-4 flex justify-center">
+            <button id="edit-button" class="text-orange-500 text-xs font-bold hover:text-orange-600 flex items-center transition-colors py-1 px-3 hover:bg-orange-50 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                リストの確認・編集
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-sm rounded-3xl max-h-[85vh] flex flex-col p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-3 border-b pb-2">
+                <h2 class="text-lg font-black text-gray-800">リストの編集</h2>
+                <button id="close-modal" class="text-gray-400 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto custom-scroll space-y-6 pr-1 py-1 text-sm">
+                <!-- Section: Main -->
+                <div>
+                    <h3 class="font-black text-[#88b04b] mb-2 flex items-center">🍖 メイン</h3>
+                    <div class="flex gap-1 mb-2">
+                        <input type="text" id="add-main-input" class="flex-1 border-2 border-gray-100 rounded-lg px-2 py-2 focus:outline-none focus:border-orange-400 transition-colors" placeholder="追加...">
+                        <button onclick="addItem('mains')" class="bg-orange-400 text-white px-3 py-2 rounded-lg font-bold">追加</button>
+                    </div>
+                    <ul id="edit-main-list" class="space-y-1"></ul>
+                </div>
+                <!-- Section: Vegetable -->
+                <div>
+                    <h3 class="font-black text-[#88b04b] mb-2 flex items-center">🥗 野菜</h3>
+                    <div class="flex gap-1 mb-2">
+                        <input type="text" id="add-veg-input" class="flex-1 border-2 border-gray-100 rounded-lg px-2 py-2 focus:outline-none focus:border-orange-400 transition-colors" placeholder="追加...">
+                        <button onclick="addItem('vegs')" class="bg-orange-400 text-white px-3 py-2 rounded-lg font-bold">追加</button>
+                    </div>
+                    <ul id="edit-veg-list" class="space-y-1"></ul>
+                </div>
+                <!-- Section: Taste -->
+                <div>
+                    <h3 class="font-black text-[#88b04b] mb-2 flex items-center">🧂 味付け</h3>
+                    <div class="flex gap-1 mb-2">
+                        <input type="text" id="add-taste-input" class="flex-1 border-2 border-gray-100 rounded-lg px-2 py-2 focus:outline-none focus:border-orange-400 transition-colors" placeholder="追加...">
+                        <button onclick="addItem('tastes')" class="bg-orange-400 text-white px-3 py-2 rounded-lg font-bold">追加</button>
+                    </div>
+                    <ul id="edit-taste-list" class="space-y-1"></ul>
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="mt-4 pt-3 border-t">
+                <button id="reset-button" class="w-full py-3 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-500 transition-colors flex items-center justify-center">
+                    リストを初期状態に戻す
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const defaultData = {
+            mains: ["鶏もも肉", "鶏むね肉", "豚バラ肉", "豚こま肉", "ハンバーグ", "白身魚", "鮭", "厚揚げ", "牛肉", "エビ"],
+            vegs: ["キャベツ", "玉ねぎ", "もやし", "白菜", "ピーマン", "ブロッコリー", "なす", "小松菜", "チンゲン菜", "にんじん"],
+            tastes: ["ガリバタ醤油", "さっぱりポン酢", "こってり味噌", "コンソメ炒め", "甘辛テリヤキ", "中華風オイスター", "塩コショウレモン", "ピリ辛豆板醤", "マヨポン和え"]
+        };
+
+        let currentData = JSON.parse(localStorage.getItem('cooking_gacha_data')) || JSON.parse(JSON.stringify(defaultData));
+
+        const mainDisplay = document.getElementById('main-display');
+        const vegDisplay = document.getElementById('veg-display');
+        const tasteDisplay = document.getElementById('taste-display');
+        const resultText = document.getElementById('result-text');
+        const resultContent = document.getElementById('result-content');
+        const resultPlaceholder = document.getElementById('result-placeholder');
+        const gachaButton = document.getElementById('gacha-button');
+        const editModal = document.getElementById('edit-modal');
+
+        let isSpinning = false;
+
+        function saveData() {
+            localStorage.setItem('cooking_gacha_data', JSON.stringify(currentData));
+        }
+
+        function getRandom(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        function updateEditList() {
+            const categories = ['mains', 'vegs', 'tastes'];
+            const labels = { mains: 'edit-main-list', vegs: 'edit-veg-list', tastes: 'edit-taste-list' };
+
+            categories.forEach(cat => {
+                const el = document.getElementById(labels[cat]);
+                el.innerHTML = currentData[cat].map((item, index) => `
+                    <li class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg font-bold text-gray-700">
+                        <span>${item}</span>
+                        <button onclick="removeItem('${cat}', ${index})" class="text-gray-300 hover:text-red-500 p-1">
+                            ×
+                        </button>
+                    </li>
+                `).join('');
+            });
+        }
+
+        window.addItem = function(category) {
+            const inputId = { mains: 'add-main-input', vegs: 'add-veg-input', tastes: 'add-taste-input' }[category];
+            const input = document.getElementById(inputId);
+            const val = input.value.trim();
+            if (val) {
+                currentData[category].push(val);
+                input.value = '';
+                saveData();
+                updateEditList();
+            }
+        };
+
+        window.removeItem = function(category, index) {
+            if (currentData[category].length <= 1) return;
+            currentData[category].splice(index, 1);
+            saveData();
+            updateEditList();
+        };
+
+        document.getElementById('reset-button').onclick = function() {
+            if (confirm("リストを初期状態に戻してもいい？")) {
+                currentData = JSON.parse(JSON.stringify(defaultData));
+                saveData();
+                updateEditList();
+                this.innerText = "リセット完了！✨";
+                setTimeout(() => { this.innerText = "リストを初期状態に戻す"; }, 2000);
+            }
+        };
+
+        function spin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            gachaButton.disabled = true;
+            
+            resultPlaceholder.classList.add('hidden');
+            resultContent.classList.add('hidden');
+
+            let count = 0;
+            const interval = setInterval(() => {
+                mainDisplay.innerText = getRandom(currentData.mains);
+                vegDisplay.innerText = getRandom(currentData.vegs);
+                tasteDisplay.innerText = getRandom(currentData.tastes);
+                
+                mainDisplay.classList.add('slot-flicker');
+                vegDisplay.classList.add('slot-flicker');
+                tasteDisplay.classList.add('slot-flicker');
+
+                count++;
+                if (count > 15) {
+                    clearInterval(interval);
+                    stopSpin();
+                }
+            }, 60);
+        }
+
+        function stopSpin() {
+            const finalMain = getRandom(currentData.mains);
+            const finalVeg = getRandom(currentData.vegs);
+            const finalTaste = getRandom(currentData.tastes);
+
+            mainDisplay.innerText = finalMain;
+            vegDisplay.innerText = finalVeg;
+            tasteDisplay.innerText = finalTaste;
+
+            mainDisplay.classList.remove('slot-flicker');
+            vegDisplay.classList.remove('slot-flicker');
+            tasteDisplay.classList.remove('slot-flicker');
+
+            // 改行ありでも最大3行に収まるように制限
+            resultText.innerText = `${finalVeg} と ${finalMain} の\n${finalTaste}`;
+            resultContent.classList.remove('hidden');
+
+            isSpinning = false;
+            gachaButton.disabled = false;
+        }
+
+        gachaButton.addEventListener('click', spin);
+        document.getElementById('edit-button').addEventListener('click', () => { updateEditList(); editModal.classList.remove('hidden'); });
+        document.getElementById('close-modal').addEventListener('click', () => { editModal.classList.add('hidden'); });
+        window.onclick = (e) => { if (e.target == editModal) editModal.classList.add('hidden'); };
+
+    </script>
+</body>
+</html>
